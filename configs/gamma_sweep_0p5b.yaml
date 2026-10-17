@@ -1,0 +1,68 @@
+# E3 — γ (length-contamination) sweep on Qwen2.5-0.5B-Instruct with LoRA.
+# One config file drives the whole sweep; the runner expands `sweep` into cells
+# and tags each run with the config hash + git commit for EXPERIMENT_LOG.md.
+
+experiment_id: E3_gamma_sweep
+project: dpo-misspec-sa
+
+model:
+  name: Qwen/Qwen2.5-0.5B-Instruct
+  dtype: float32           # T4 has no bf16 and Qwen2.5 fp16 can NaN; 0.5B fits in fp32 (amended 2026-10-18)
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+data:
+  prompt_source: public_instruction_set   # resolved in src/prefgen/prompts.py
+  n_prompts: 10000                        # 5000 in the minimum-viable version
+  n_eval_prompts: 500                     # 300 in the minimum-viable version
+  pairs_cache: results/cache/pairs_refprobs.parquet   # E1 + E2 output, built once
+  sampling:
+    n_samples_per_prompt: 2
+    temperature: 0.8
+    top_p: 0.95
+    max_new_tokens: 256
+
+annotator:
+  true_reward_model: small_public_reward_model   # ground truth r*, resolved in src/prefgen/reward.py
+  gamma: 0.0                 # overridden by sweep
+  mixture:
+    K: 1                     # single annotator for the γ sweep
+    minority_mass: 0.0
+  label_flip_eta: 0.0        # control runs use 0.1 (see configs/control_label_flip.yaml, to be added)
+
+train:
+  algorithm: dpo             # dpo | dpo_lennorm | auxdpo | dpo_two_timescale (stretch)
+  beta: 0.1                  # overridden by sweep
+  epochs: 1
+  learning_rate: 1.0e-5
+  lr_schedule: cosine
+  warmup_ratio: 0.05
+  per_device_batch_size: 4
+  gradient_accumulation_steps: 8      # effective batch 32
+  max_length: 512
+  max_prompt_length: 256
+  checkpoint_every_steps: 50          # needed for the convergence-curve fit
+  seed: 0                             # overridden by sweep
+
+eval:
+  decoding: greedy
+  max_new_tokens: 256
+  metrics: [win_rate_vs_true_reward, mean_length, p90_length, kl_to_ref,
+            margin_iqr, calibration_spearman]
+  bootstrap_resamples: 10000
+  paired: true
+
+sweep:
+  gamma: [0.0, 0.05, 0.1, 0.2, 0.3]
+  beta: [0.05, 0.1, 0.5]
+  seed: [0, 1, 2]
+  # minimum-viable version: gamma [0.0, 0.1, 0.3], beta [0.1], seed [0, 1, 2]
+
+logging:
+  wandb: true
+  wandb_project: dpo-misspec-sa
+  save_adapter_only: true    # never save merged models
+  output_dir: results/E3

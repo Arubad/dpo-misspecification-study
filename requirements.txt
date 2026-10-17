@@ -1,0 +1,15 @@
+torch>=2.3
+transformers>=4.45
+peft>=0.12
+trl>=0.11
+datasets>=2.20
+accelerate>=0.33
+numpy>=1.26
+scipy>=1.13
+pandas>=2.2
+pyarrow>=16.0
+matplotlib>=3.9
+seaborn>=0.13
+wandb>=0.17
+pyyaml>=6.0
+tqdm>=4.66
