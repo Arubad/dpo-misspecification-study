@@ -179,6 +179,13 @@ def train_cell(cfg: Dict, expected_note: str = "") -> Dict:
                     raise RuntimeError("non-finite loss: switch dtype to float32 (T4 has no bf16; fp16 Qwen can overflow)")
                 if ckpt_every and step % ckpt_every == 0:
                     model.save_pretrained(os.path.join(out_dir, f"ckpt_step{step:05d}"))
+    if micro % accum != 0:  # flush the last partial accumulation window
+        scaler.unscale_(opt)
+        torch.nn.utils.clip_grad_norm_(params, float(t.get("max_grad_norm", 1.0)))
+        scaler.step(opt)
+        scaler.update()
+        opt.zero_grad(set_to_none=True)
+        step += 1
     adapter_dir = os.path.join(out_dir, "adapter")
     model.save_pretrained(adapter_dir)
     if aux is not None:
