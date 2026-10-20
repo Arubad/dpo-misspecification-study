@@ -18,11 +18,12 @@ Ten weeks, one project at a time, minimum-viable version first. Tick boxes as yo
 - [ ] Semantic Scholar sweep for prior controlled synthetic-preference studies; record in `REVIEW.md` §6
 
 ## Milestone 2 — Weeks 3–4: harness and control
-- [ ] `src/prefgen`: prompts, paired sampling, r* scoring, γ / mixture / η nuisance terms; one parquet cache (E1 + E2)
-- [ ] Notebook showing 20 labelled pairs and the r* histogram
-- [ ] `src/train`: DPO on LoRA via TRL, fp32, per-step checkpoints; config hash + git commit tagging
-- [ ] `src/eval`: win-rate vs r*, length, KL, margin IQR, calibration, likelihood displacement; paired bootstrap
-- [ ] Smallest end-to-end run: 1 config, 1 seed, 200 prompts, 50 steps
+- [x] `src/prefgen`: prompts, K=4 sampling, r* scoring, sentiment axis, γ / mixture / η nuisance terms; one parquet cache (E1 + E2) — written 2026-10-20, not yet run on GPU
+- [x] `src/train`: own DPO trainer on LoRA (dpo / rdpo / auxdpo / restricted capacity), fp32, checkpoints, config hash + commit tagging — written, not yet run on GPU
+- [x] `src/eval`: win-rate vs r*, length, KL, margin IQR, calibration, likelihood displacement; paired bootstrap — written, not yet run on GPU
+- [x] `src/analysis`: numerical ε (unit-tested), pre-registered tests, figures — written
+- [ ] `notebooks/00_smoke_test` passes on Kaggle (every code path, 24 prompts)
+- [ ] `notebooks/01_E1_E2_build_cache`: cache built; notebook shows 20 labelled pairs and the r* histogram; ε table printed
 - [ ] **Expected-to-fail control passes:** η = 0.1 cell shows no effect (logged)
 - [ ] Decide Qwen2.5-0.5B vs Qwen3-0.6B; log the decision
 

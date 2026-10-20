@@ -1,0 +1,69 @@
+model:
+  name: Qwen/Qwen2.5-0.5B-Instruct
+  dtype: float32             # T4 has no bf16; fp16 Qwen2.5 can overflow; 0.5B fits in fp32
+  capacity: full             # full = r16 on q/k/v/o; restricted = r2 on q/v (policy-class cell for H3)
+  lora: {r: 16, alpha: 32, dropout: 0.05, target_modules: [q_proj, k_proj, v_proj, o_proj]}
+
+data:
+  prompt_source: alpaca_cleaned
+  n_prompts: 5000            # minimum-viable size; 10000 for the full version
+  n_eval_prompts: 300        # 500 for the full version
+  seed: 0
+  pairs_per_prompt: 3        # of the K(K-1)/2 = 6 labelled pairs per prompt (null = all)
+  max_train_pairs: null
+  sampling:
+    n_samples_per_prompt: 4  # K >= 3 is required for epsilon to be well defined (amendment 2026-10-20)
+    temperature: 0.8
+    top_p: 0.95
+    max_new_tokens: 256
+    batch_size: 16
+    logprob_batch_size: 8
+
+annotator:
+  true_reward_model: OpenAssistant/reward-model-deberta-v3-base
+  axis_model: distilbert-base-uncased-finetuned-sst-2-english
+  reward_scale: 2.0          # s: rewards are s * z-scores
+  axis_weight: 1.0           # lam: minority annotator's weight on the sentiment axis
+  gamma: 0.0                 # length contamination, nats per token
+  mixture: {K: 1, minority_mass: 0.0}
+  label_flip_eta: 0.0
+
+train:
+  algorithm: dpo             # dpo | rdpo (length-regularised, Park et al.) | auxdpo (Gopalan et al.)
+  beta: 0.1
+  rdpo_alpha: 0.005
+  auxdpo_lambda: 0.1
+  epochs: 1
+  learning_rate: 2.0e-5
+  lr_schedule: cosine
+  warmup_ratio: 0.05
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  per_device_batch_size: 2   # pairs; Qwen's 151k vocab makes logits the memory bottleneck
+  gradient_accumulation_steps: 16
+  gradient_checkpointing: true
+  max_length: 512
+  max_prompt_length: 256
+  checkpoint_every_steps: 0
+  displacement_pairs: 256
+  seed: 0
+
+eval:
+  max_new_tokens: 256
+  batch_size: 16
+  n_margin_pairs: 600
+
+logging:
+  output_dir: results
+  save_adapter_only: true
+
+experiment_id: E5_auxdpo
+# H3 (v0.2): AuxDPO separates policy-class from preference-model misspecification.
+#   capacity=restricted, minority_mass=0  -> AuxDPO should recover >= 50% of the gap to capacity=full
+#   capacity=full, minority_mass=0.5      -> AuxDPO should recover < 20% of the gap to minority_mass=0
+# The dpo rows of this sweep are the comparison baselines (full-capacity dpo at minority_mass=0 is also in E4).
+annotator: {true_reward_model: OpenAssistant/reward-model-deberta-v3-base, axis_model: distilbert-base-uncased-finetuned-sst-2-english, reward_scale: 2.0, axis_weight: 1.0, gamma: 0.0, mixture: {K: 2, minority_mass: 0.0}, label_flip_eta: 0.0}
+expected:
+  default: "auxdpo recovers most of the restricted-capacity gap and none of the mixture gap"
+sweep: {algorithm: [dpo, auxdpo, rdpo], capacity: [full, restricted], minority_mass: [0.0, 0.5], beta: [0.1], seed: [0, 1, 2]}
+sweep_minimum: {algorithm: [dpo, auxdpo], capacity: [full, restricted], minority_mass: [0.0, 0.5], beta: [0.1], seed: [0, 1, 2]}

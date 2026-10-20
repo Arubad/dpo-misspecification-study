@@ -1,11 +1,7 @@
-"""dpo-misspecification-sa — DPO under Bradley–Terry misspecification, analysed as stochastic approximation.
+"""dpo-misspecification-study: DPO under Bradley-Terry misspecification with an exactly known reward.
 
-Planned modules (see src/README.md):
-    prefgen   — synthetic preference generator with exactly known ground-truth reward
-    train     — DPO variants (vanilla, length-normalised, AuxDPO, two-timescale stretch)
-    eval      — win-rate, length, KL, margins, calibration
-    analysis  — ε computation, convergence-curve fits, figures
-    reproduce — one-command reproduction of the main plot
+Packages: common (config/seed/log/stats), prefgen (E1+E2 cache), train (DPO variants),
+eval (E9 metrics), analysis (epsilon, pre-registered tests, figures).  Entry point: python -m src.run
 """
 
-__version__ = "0.0.0-prereg"
+__version__ = "0.2.0-code"
